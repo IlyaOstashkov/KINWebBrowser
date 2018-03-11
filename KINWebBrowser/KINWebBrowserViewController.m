@@ -47,6 +47,8 @@ static void *KINWebBrowserContext = &KINWebBrowserContext;
 @property (nonatomic, strong) NSURL *uiWebViewCurrentURL;
 @property (nonatomic, strong) NSURL *URLToLaunchWithPermission;
 @property (nonatomic, strong) UIAlertView *externalAppPermissionAlertView;
+@property (weak, nonatomic) UINavigationBar *navigationBar;
+@property (nonatomic, strong) NSURL *loadURL;
 
 @end
 
@@ -157,9 +159,17 @@ static void *KINWebBrowserContext = &KINWebBrowserContext;
     [self.navigationController setNavigationBarHidden:NO animated:YES];
     [self.navigationController setToolbarHidden:NO animated:YES];
     
+    self.navigationBar = self.navigationController.navigationBar;
+    _navigationBar.translucent = NO;
+    
     [self.navigationController.navigationBar addSubview:self.progressView];
     
     [self updateToolbarState];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    _navigationBar.translucent = NO;
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -173,9 +183,15 @@ static void *KINWebBrowserContext = &KINWebBrowserContext;
     [self.progressView removeFromSuperview];
 }
 
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    _navigationBar.translucent = YES;
+}
+
 #pragma mark - Public Interface
 
 - (void)loadRequest:(NSURLRequest *)request {
+    self.loadURL = request.URL;
     if(self.wkWebView) {
         [self.wkWebView loadRequest:request];
     }
@@ -370,6 +386,9 @@ static void *KINWebBrowserContext = &KINWebBrowserContext;
             else if(self.uiWebView) {
                 URLString = [self.uiWebViewCurrentURL absoluteString];
             }
+            if (!URLString) {
+                URLString = [_loadURL absoluteString];
+            }
             
             URLString = [URLString stringByReplacingOccurrencesOfString:@"http://" withString:@""];
             URLString = [URLString stringByReplacingOccurrencesOfString:@"https://" withString:@""];
@@ -480,6 +499,9 @@ static void *KINWebBrowserContext = &KINWebBrowserContext;
     else if(self.uiWebView) {
         URLForActivityItem = self.uiWebView.request.URL;
         URLTitle = [self.uiWebView stringByEvaluatingJavaScriptFromString:@"document.title"];
+    }
+    if (!URLForActivityItem) {
+        URLForActivityItem = _loadURL;
     }
     if (URLForActivityItem) {
         dispatch_async(dispatch_get_main_queue(), ^{
